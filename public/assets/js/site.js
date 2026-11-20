@@ -419,16 +419,270 @@ function initHorizontalHistory() {
   });
 }
 
-function initTimelinePage() {
-  const tl = $('[data-timeline]');
-  if (!tl) return;
-  const fill = $('[data-timeline-fill]', tl);
-  gsap.fromTo(fill, { scaleY: 0 }, { scaleY: 1, ease: 'none', scrollTrigger: { trigger: tl, start: 'top 60%', end: 'bottom 60%', scrub: true } });
-  $$('[data-tl-item]', tl).forEach((item) => {
-    const fromLeft = item.classList.contains('tl-item--left') && window.innerWidth > 960;
-    gsap.fromTo(item, { opacity: 0, x: fromLeft ? -60 : 60 }, { opacity: 1, x: 0, duration: 1, ease: 'power3.out', scrollTrigger: { trigger: item, start: 'top 85%', once: true } });
-    gsap.from($('.tl-item__dot', item), { scale: 0, duration: 0.6, ease: 'back.out(3)', scrollTrigger: { trigger: item, start: 'top 75%', once: true } });
+/* ============================================== Histoire : le chemin parcouru */
+/*
+ * Une route sinueuse relie toutes les étapes. Elle se trace au fil du défilement,
+ * le « voyageur » (logo) avance sur la route et chaque étape s'éclaire quand il l'atteint.
+ * animate = false (réduire les animations) : route entière tracée, toutes les étapes visibles.
+ */
+function initJourney(animate) {
+  const root = $('[data-journey]');
+  if (!root) return;
+  const svg = $('.journey__svg', root);
+  const ghost = $('.journey__ghost', root);
+  const trail = $('.journey__trail', root);
+  const traveler = $('.journey__traveler', root);
+  const stops = $$('[data-stop]', root);
+  const start = $('.journey__start', root);
+  const end = $('.journey__end', root);
+  const state = { len: 0 };
+  let total = 0;
+  let table = []; // échantillons {l, x, y}, y croissant le long de la route
+  let pinLens = [];
+
+  const build = () => {
+    const box = root.getBoundingClientRect();
+    const W = box.width;
+    const H = root.offsetHeight;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    const at = (el, where) => {
+      const r = el.getBoundingClientRect();
+      const y = where === 'bottom' ? r.bottom - box.top : where === 'top' ? r.top - box.top : r.top - box.top + r.height / 2;
+      return { x: r.left - box.left + r.width / 2, y };
+    };
+    const pts = [at(start, 'bottom'), ...stops.map((s) => at($('[data-pin]', s))), at(end, 'top')];
+    pts[0].y -= 20;
+    pts[pts.length - 1].y += 20;
+    // Courbes en S à tangentes verticales : la route serpente d'une étape à l'autre
+    let d = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1], b = pts[i], dy = (b.y - a.y) * 0.55;
+      d += ` C ${a.x.toFixed(1)} ${(a.y + dy).toFixed(1)}, ${b.x.toFixed(1)} ${(b.y - dy).toFixed(1)}, ${b.x.toFixed(1)} ${b.y.toFixed(1)}`;
+    }
+    ghost.setAttribute('d', d);
+    trail.setAttribute('d', d);
+    total = trail.getTotalLength();
+    trail.style.strokeDasharray = `${total} ${total}`;
+    const n = Math.ceil(total / 5);
+    table = [];
+    for (let i = 0; i <= n; i++) {
+      const l = (total * i) / n;
+      const p = trail.getPointAtLength(l);
+      table.push({ l, x: p.x, y: p.y });
+    }
+    pinLens = pts.slice(1, -1).map((p) => lenAtY(p.y));
+    state.len = Math.min(state.len, total);
+    render();
+  };
+
+  // Recherche dichotomique : longueur de route correspondant à une hauteur donnée
+  function lenAtY(y) {
+    if (!table.length) return 0;
+    let lo = 0, hi = table.length - 1;
+    if (y <= table[0].y) return 0;
+    if (y >= table[hi].y) return total;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (table[mid].y < y) lo = mid; else hi = mid;
+    }
+    const a = table[lo], b = table[hi];
+    return a.l + ((y - a.y) / Math.max(0.001, b.y - a.y)) * (b.l - a.l);
+  }
+
+  function pointAt(l) {
+    if (!table.length) return { x: 0, y: 0 };
+    const i = Math.min(table.length - 1, Math.max(0, Math.round((l / total) * (table.length - 1))));
+    return table[i];
+  }
+
+  function render() {
+    trail.style.strokeDashoffset = String(Math.max(0, total - state.len));
+    const p = pointAt(state.len);
+    traveler.style.transform = `translate(${p.x}px, ${p.y}px)`;
+    let currentIdx = -1;
+    stops.forEach((s, i) => {
+      const reached = state.len >= pinLens[i] - 4;
+      if (reached) currentIdx = i;
+      s.classList.toggle('is-reached', reached);
+    });
+    stops.forEach((s, i) => s.classList.toggle('is-current', i === currentIdx));
+    root.classList.toggle('is-complete', state.len >= total - 6);
+  }
+
+  build();
+  root.classList.add('is-ready');
+
+  if (!animate) {
+    state.len = total;
+    render();
+    new ResizeObserver(() => { build(); state.len = total; render(); }).observe(root);
+    return;
+  }
+
+  // Le voyageur suit la ligne de lecture (55 % de la hauteur de l'écran)
+  const follow = () => {
+    const top = root.getBoundingClientRect().top;
+    const target = lenAtY(window.innerHeight * 0.55 - top);
+    gsap.to(state, { len: target, duration: 0.7, ease: 'power2.out', overwrite: true, onUpdate: render });
+  };
+  ScrollTrigger.create({ trigger: root, start: 'top bottom', end: 'bottom top', onUpdate: follow, onRefresh: follow });
+
+  let t = 0;
+  new ResizeObserver(() => {
+    clearTimeout(t);
+    t = setTimeout(() => { build(); ScrollTrigger.refresh(); }, 150);
+  }).observe(root);
+
+  // Apparition des grandes années-bornes
+  $$('.stop__year', root).forEach((y) => {
+    gsap.from(y, { yPercent: 40, opacity: 0, duration: 1.2, ease: 'power3.out', scrollTrigger: { trigger: y, start: 'top 85%', once: true } });
   });
+}
+
+/* =========================================== Vue d'ensemble de tout le parcours */
+function initOverview(animate) {
+  const sec = $('[data-overview]');
+  if (!sec) return;
+  const map = $('[data-map]', sec);
+  const svg = $('.overview__svg', sec);
+  const ghost = $('.overview__ghost', sec);
+  const trail = $('.overview__trail', sec);
+  const traveler = $('.overview__traveler', sec);
+  const items = $$('[data-overview-list] li', sec).map((li) => ({ ...li.dataset }));
+  const det = {
+    step: $('.overview__detail-step', sec), date: $('.overview__detail-date', sec),
+    title: $('.overview__detail-title', sec), text: $('.overview__detail-text', sec), link: $('.overview__detail-link', sec),
+  };
+  if (!items.length) return;
+  const n = items.length;
+  const state = { len: 0 };
+  let total = 0, W = 1200, H = 560, pts = [], lens = [], active = -1, tour = null;
+
+  // Boutons d'étape (créés une fois, repositionnés à chaque construction)
+  const buttons = items.map((it, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `ov-pt ov-pt--${it.type}`;
+    b.setAttribute('aria-label', `Étape ${i + 1} : ${it.title}, ${it.date}`);
+    b.innerHTML = '<span class="ov-pt__label"></span>';
+    b.firstChild.textContent = it.year;
+    b.addEventListener('mouseenter', () => select(i, true));
+    b.addEventListener('focus', () => select(i, true));
+    b.addEventListener('click', () => select(i, true));
+    map.appendChild(b);
+    return b;
+  });
+
+  const build = () => {
+    const portrait = window.innerWidth < 700;
+    W = portrait ? 420 : 1200;
+    H = portrait ? 1000 : 560;
+    map.style.aspectRatio = `${W} / ${H}`;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    const along = portrait ? H : W;
+    const across = portrait ? W : H;
+    const lanes = Math.max(2, Math.min(4, Math.ceil(n / (portrait ? 6 : 7))));
+    const m = portrait ? 50 : 80;
+    const P = (a, c) => (portrait ? `${c.toFixed(1)},${a.toFixed(1)}` : `${a.toFixed(1)},${c.toFixed(1)}`);
+    const laneC = (i) => (across * (i + 0.5)) / lanes;
+    const wave = (across / lanes) * 0.26;
+    let d = '';
+    for (let i = 0; i < lanes; i++) {
+      const a0 = i % 2 ? along - m : m;
+      const a1 = i % 2 ? m : along - m;
+      const c = laneC(i);
+      const w = i % 2 ? -wave : wave;
+      if (i === 0) d += `M ${P(a0, c)}`;
+      d += ` C ${P(a0 + (a1 - a0) / 3, c - w)} ${P(a0 + (2 * (a1 - a0)) / 3, c + w)} ${P(a1, c)}`;
+      if (i < lanes - 1) {
+        const c2 = laneC(i + 1);
+        const bulge = i % 2 ? a1 - m * 0.85 : a1 + m * 0.85;
+        d += ` C ${P(bulge, c)} ${P(bulge, c2)} ${P(a1, c2)}`;
+      }
+    }
+    ghost.setAttribute('d', d);
+    trail.setAttribute('d', d);
+    total = trail.getTotalLength();
+    trail.style.strokeDasharray = `${total} ${total}`;
+    lens = items.map((_, i) => (n === 1 ? total : total * (0.015 + (0.97 * i) / (n - 1))));
+    pts = lens.map((l) => trail.getPointAtLength(l));
+    buttons.forEach((b, i) => {
+      b.style.left = `${(pts[i].x / W) * 100}%`;
+      b.style.top = `${(pts[i].y / H) * 100}%`;
+      b.classList.toggle('ov-pt--below', i % 2 === 1);
+    });
+    const last = pts[n - 1];
+    map.style.transformOrigin = `${(last.x / W) * 100}% ${(last.y / H) * 100}%`;
+    draw();
+  };
+
+  function draw() {
+    trail.style.strokeDashoffset = String(Math.max(0, total - state.len));
+    const p = trail.getPointAtLength(Math.min(state.len, total));
+    traveler.style.left = `${(p.x / W) * 100}%`;
+    traveler.style.top = `${(p.y / H) * 100}%`;
+  }
+
+  function show(i) {
+    const it = items[i];
+    det.step.textContent = `Étape ${i + 1} sur ${n}`;
+    det.date.textContent = it.date + (it.place ? ` · ${it.place}` : '');
+    det.title.textContent = it.title;
+    det.text.textContent = it.text;
+    det.link.hidden = !it.url;
+    if (it.url) det.link.href = it.url;
+    buttons.forEach((b, k) => b.classList.toggle('is-active', k === i));
+  }
+
+  function select(i, user) {
+    if (user && tour) { tour.kill(); tour = null; }
+    if (i === active && user) return;
+    active = i;
+    show(i);
+    if (!animate) { state.len = lens[i]; draw(); return; }
+    gsap.to(state, { len: lens[i], duration: 0.9, ease: 'power3.inOut', overwrite: true, onUpdate: draw });
+    gsap.fromTo([det.title, det.text], { y: 12, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, stagger: 0.05, overwrite: true });
+  }
+
+  // Parcours complet rejoué : la route se dessine, les étapes défilent dans le panneau
+  function playTour() {
+    if (tour) tour.kill();
+    state.len = 0;
+    draw();
+    active = -1;
+    gsap.set(traveler, { opacity: 1 });
+    tour = gsap.timeline({ onComplete: () => { tour = null; } });
+    tour.fromTo(buttons, { scale: 0 }, { scale: 1, duration: 0.5, stagger: 0.05, ease: 'back.out(2.5)', clearProps: 'transform' }, 0)
+      .to(state, {
+        len: lens[n - 1], duration: Math.min(5, 1.2 + n * 0.22), ease: 'power1.inOut',
+        onUpdate: () => {
+          draw();
+          let idx = 0;
+          for (let k = 0; k < n; k++) if (state.len >= lens[k] - 1) idx = k;
+          if (idx !== active) { active = idx; show(idx); }
+        },
+      }, 0.2);
+  }
+
+  build();
+  sec.classList.add('is-ready');
+  show(n - 1);
+  active = n - 1;
+  new ResizeObserver(() => { build(); }).observe(map);
+  $('[data-replay]', sec)?.addEventListener('click', () => (animate ? playTour() : select(0, true)));
+
+  if (!animate) {
+    state.len = lens[n - 1];
+    traveler.style.opacity = 1;
+    draw();
+    return;
+  }
+  // Effet « zoom arrière » : on découvre la carte entière après avoir parcouru le chemin
+  gsap.fromTo(map, { scale: 1.7, opacity: 0.2 }, {
+    scale: 1, opacity: 1, ease: 'none',
+    scrollTrigger: { trigger: sec, start: 'top bottom', end: 'top 15%', scrub: true },
+  });
+  ScrollTrigger.create({ trigger: map, start: 'top 70%', once: true, onEnter: playTour });
 }
 
 function initQuotes() {
@@ -770,6 +1024,9 @@ function boot() {
   if (reduced || !gsap || !ScrollTrigger || !SplitText) {
     html.classList.remove('anim');
     window.__cenacleReady = true;
+    // Version statique du chemin et de la vue d'ensemble (sans mouvement)
+    const ready = document.fonts ? document.fonts.ready : Promise.resolve();
+    ready.then(() => { initJourney(false); initOverview(false); });
     return;
   }
   gsap.registerPlugin(ScrollTrigger, SplitText);
@@ -787,7 +1044,8 @@ function boot() {
     initCounters();
     initMarquees();
     initHorizontalHistory();
-    initTimelinePage();
+    initJourney(true);
+    initOverview(true);
     initQuotes();
     initJoinBlocks();
     initLegacy();
