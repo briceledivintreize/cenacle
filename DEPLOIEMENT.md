@@ -38,8 +38,8 @@ Dans le gestionnaire de fichiers, créez `app/config.local.php` (copie de `app/c
 ```php
 <?php
 return [
-    'site_url'  => 'https://www.votre-domaine.tg',   // sans / final
-    'mail_from' => 'no-reply@votre-domaine.tg',      // adresse du domaine (créée dans hPanel › E-mails)
+    'site_url'  => 'https://lecenacle.youngwaverecords.com',   // sans / final
+    'mail_from' => 'no-reply@youngwaverecords.com',      // adresse du domaine (créée dans hPanel › E-mails)
 ];
 ```
 

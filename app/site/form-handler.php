@@ -67,8 +67,9 @@ function handle_public_form(string $kind, string $back): never
         $mailBody = "$label reçu(e) via le site du Cénacle.\n\n"
             . "Nom : {$in['name']}\nE-mail : {$in['email']}\nTéléphone : {$in['phone']}\nObjet : $subject\n\n"
             . $in['body'] . "\n\n— Consultez tous les messages dans l'administration : " . abs_url('admin/?p=messages');
+        $host = preg_replace('/^www\./', '', parse_url(abs_url(), PHP_URL_HOST) ?: 'localhost');
         $headers = [
-            'From'         => $GLOBALS['config']['mail_from'],
+            'From'         => ($GLOBALS['config']['mail_from'] ?: 'no-reply@' . $host),
             'Reply-To'     => $in['email'],
             'Content-Type' => 'text/plain; charset=UTF-8',
         ];

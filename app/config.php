@@ -15,7 +15,8 @@ $config = [
     'timezone'     => 'Africa/Lome',
     'debug'        => false,
     // Adresse d'expédition des notifications (formulaire de contact).
-    'mail_from'    => 'no-reply@localhost',
+    // Vide = no-reply@<domaine du site> (ex. no-reply@lecenacle.youngwaverecords.com).
+    'mail_from'    => '',
     // Taille maximale d'un envoi (octets).
     'max_upload'   => 40 * 1024 * 1024,
     // Largeur maximale des images optimisées.
