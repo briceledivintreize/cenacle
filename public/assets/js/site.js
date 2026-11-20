@@ -703,7 +703,73 @@ function initJoinBlocks() {
       clipPath: 'inset(0% 0% 0% 0% round 36px)', ease: 'power2.out',
       scrollTrigger: { trigger: block, start: 'top 95%', end: 'top 45%', scrub: true },
     });
+    initJoinBubbles(block);
   });
+}
+
+/*
+ * Bulles jaune et rouge du bloc « Rejoindre » :
+ * entrée élastique, flottement continu, contour organique qui ondule,
+ * parallaxe à la souris (sens opposés) et réaction au survol des boutons.
+ * Chaque effet pilote une propriété distincte pour ne pas se contrarier :
+ *   entrée/survol → scale · flottement → x/y · souris → xPercent/yPercent · forme → borderRadius/rotation
+ */
+function initJoinBubbles(block) {
+  const jaune = $('.join__bubble--jaune', block);
+  const rouge = $('.join__bubble--rouge', block);
+  if (!jaune || !rouge) return;
+
+  // Entrée : les bulles « éclosent » quand le bloc arrive à l'écran
+  gsap.set([jaune, rouge], { scale: 0 });
+  gsap.timeline({ scrollTrigger: { trigger: block, start: 'top 80%', once: true } })
+    .to(jaune, { scale: 1, duration: 1.6, ease: 'elastic.out(1, 0.55)' })
+    .to(rouge, { scale: 1, duration: 1.3, ease: 'elastic.out(1.1, 0.45)' }, 0.25);
+
+  // Flottement continu
+  gsap.to(jaune, { x: -26, y: -18, duration: 5.5, repeat: -1, yoyo: true, ease: 'sine.inOut', delay: 1.6 });
+  gsap.to(rouge, { x: 22, y: 16, duration: 3.8, repeat: -1, yoyo: true, ease: 'sine.inOut', delay: 1.4 });
+
+  // Contour vivant : la bulle ondule comme une goutte d'encre
+  const blob = (el, shapes, dur) => {
+    const tl = gsap.timeline({ repeat: -1, yoyo: true, defaults: { duration: dur, ease: 'sine.inOut' } });
+    shapes.forEach((s) => tl.to(el, { borderRadius: s }));
+    gsap.to(el, { rotation: 360, duration: dur * 14, repeat: -1, ease: 'none' });
+  };
+  blob(jaune, ['58% 42% 55% 45% / 45% 55% 45% 55%', '45% 55% 42% 58% / 56% 44% 58% 42%', '52% 48% 60% 40% / 48% 58% 42% 52%', '50%'], 3.2);
+  blob(rouge, ['42% 58% 50% 50% / 58% 42% 58% 42%', '60% 40% 45% 55% / 45% 55% 45% 55%', '50%'], 2.4);
+
+  // Parallaxe à la souris : les deux bulles partent en sens opposés
+  if (finePointer) {
+    const jx = gsap.quickTo(jaune, 'xPercent', { duration: 1.2, ease: 'power3' });
+    const jy = gsap.quickTo(jaune, 'yPercent', { duration: 1.2, ease: 'power3' });
+    const rx = gsap.quickTo(rouge, 'xPercent', { duration: 0.8, ease: 'power3' });
+    const ry = gsap.quickTo(rouge, 'yPercent', { duration: 0.8, ease: 'power3' });
+    block.addEventListener('pointermove', (e) => {
+      const r = block.getBoundingClientRect();
+      const nx = (e.clientX - r.left) / r.width - 0.5;
+      const ny = (e.clientY - r.top) / r.height - 0.5;
+      jx(-nx * 14); jy(-ny * 14);
+      rx(nx * 60); ry(ny * 50);
+    });
+    block.addEventListener('pointerleave', () => { jx(0); jy(0); rx(0); ry(0); });
+  }
+
+  // Survol des boutons : « Devenir membre » gonfle la bulle jaune, « Soutenir » la rouge
+  const btns = $$('.btn-row .btn', block);
+  const grow = (el, s) => gsap.to(el, { scale: s, duration: 0.8, ease: 'elastic.out(1, 0.5)', overwrite: 'auto' });
+  if (btns[0]) {
+    btns[0].addEventListener('pointerenter', () => grow(jaune, 1.15));
+    btns[0].addEventListener('pointerleave', () => grow(jaune, 1));
+  }
+  if (btns[1]) {
+    btns[1].addEventListener('pointerenter', () => grow(rouge, 1.6));
+    btns[1].addEventListener('pointerleave', () => grow(rouge, 1));
+  }
+
+  // Défilement : la bulle jaune monte légèrement, la rouge descend
+  const scroll = { trigger: block, start: 'top bottom', end: 'bottom top', scrub: true };
+  gsap.fromTo(jaune, { bottom: -170 }, { bottom: -70, ease: 'none', scrollTrigger: scroll });
+  gsap.fromTo(rouge, { top: -70 }, { top: -10, ease: 'none', scrollTrigger: { ...scroll } });
 }
 
 function initLegacy() {

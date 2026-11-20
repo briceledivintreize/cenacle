@@ -99,6 +99,8 @@ function join_block(): string
     $wa = setting('whatsapp');
     return '<div class="join" data-join>'
         . '<canvas class="join__gl" data-ink="dark" aria-hidden="true"></canvas>'
+        . '<span class="join__bubble join__bubble--jaune" data-bubble aria-hidden="true"></span>'
+        . '<span class="join__bubble join__bubble--rouge" data-bubble aria-hidden="true"></span>'
         . '<div class="join__inner">'
         . '<h2 data-split>' . e(setting('join_title')) . '</h2>'
         . '<p data-reveal>' . e(setting('join_text')) . '</p>'

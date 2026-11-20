@@ -383,8 +383,14 @@ html:not(.anim) .hscroll__viewport { overflow-x: auto; padding-bottom: 10px; }
 .join h2 { font-size: clamp(30px, 3.8vw, 48px); max-width: 15ch; }
 .join p { margin-top: 16px; max-width: 52ch; font-size: 16.5px; font-weight: 500; }
 .join .btn-row { display: flex; gap: 14px; margin-top: 30px; flex-wrap: wrap; align-items: center; }
-.join::after { content: ""; position: absolute; right: -80px; bottom: -120px; width: 380px; height: 380px; border-radius: 50%; background: var(--jaune); opacity: .9; }
-.join::before { content: ""; position: absolute; right: 140px; top: -50px; width: 110px; height: 110px; border-radius: 50%; background: var(--rouge); z-index: 0; }
+.join__bubble { position: absolute; z-index: 0; border-radius: 50%; pointer-events: none; will-change: transform, border-radius; }
+.join__bubble--jaune { right: -80px; bottom: -120px; width: 380px; height: 380px; background: var(--jaune); opacity: .92; }
+.join__bubble--rouge { right: 140px; top: -50px; width: 110px; height: 110px; background: var(--rouge); }
+/* Sans JS : légère respiration CSS ; GSAP prend le relais sinon */
+html:not(.anim) .join__bubble--jaune { animation: bubble 9s ease-in-out infinite alternate; }
+html:not(.anim) .join__bubble--rouge { animation: bubble 6s ease-in-out infinite alternate-reverse; }
+@keyframes bubble { to { transform: translate(-14px, -10px) scale(1.06); } }
+@media (prefers-reduced-motion: reduce) { .join__bubble { animation: none !important; } }
 
 /* ---------- Contact ---------- */
 .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; max-width: var(--max); margin: 0 auto; }
@@ -773,7 +779,8 @@ html.anim [data-hero-media] { opacity: 0; }
   .lightbox { padding: 60px 10px; }
   .lightbox__nav { top: auto; bottom: 14px; margin: 0; }
   .milestone__year { font-size: 64px; }
-  .join::before { right: 40px; }
+  .join__bubble--rouge { right: 40px; }
+  .join__bubble--jaune { width: 260px; height: 260px; right: -90px; bottom: -110px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
