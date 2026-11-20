@@ -1,0 +1,151 @@
+<?php
+/**
+ * Déclaration des contenus gérés par le panel (CRUD générique).
+ * Pour ajouter un type de contenu : créer la table (install/schema.php) puis le déclarer ici.
+ *
+ * Champ : [libellé, type, options]
+ *   types : text, textarea, rich, image, number, checkbox, select, date, url, tel, email
+ *   options : required, help, options (select), placeholder, default, col (largeur: half)
+ */
+
+function admin_resources(): array
+{
+    return [
+        'events' => [
+            'table'    => 'events',
+            'label'    => 'Événements',
+            'singular' => 'un événement',
+            'icon'     => 'calendar',
+            'intro'    => 'Chaque entrée alimente la chronologie « Histoire » et/ou l\'onglet « Événements ». Ajoutez photos et vidéos depuis le bouton « Galerie ».',
+            'order'    => 'event_date IS NULL DESC, event_date DESC, id DESC',
+            'sortable' => false,
+            'slug'     => 'title',
+            'public'   => fn($r) => 'evenements/' . $r['slug'],
+            'columns'  => ['title' => 'Titre', 'date_label' => 'Date', 'type' => 'Type', 'media' => 'Médias'],
+            'filters'  => ['type' => EVENT_TYPES],
+            'search'   => ['title', 'location', 'summary'],
+            'fields'   => [
+                'title'      => ['Titre', 'text', ['required' => true]],
+                'date_label' => ['Date affichée', 'text', ['required' => true, 'help' => 'Texte libre : « 29 août 2026 », « 2010 — 2012 », « Aujourd\'hui »…', 'col' => 'half']],
+                'event_date' => ['Date de tri', 'date', ['help' => 'Sert à classer l\'événement. Laisser vide pour le placer en fin de chronologie.', 'col' => 'half']],
+                'type'       => ['Type', 'select', ['options' => EVENT_TYPES, 'col' => 'half']],
+                'location'   => ['Lieu', 'text', ['col' => 'half']],
+                'summary'    => ['Résumé', 'textarea', ['required' => true, 'help' => 'Affiché dans la chronologie et sur les cartes (2-3 phrases).']],
+                'content'    => ['Récit complet', 'rich', ['help' => 'Facultatif : texte détaillé affiché sur la page de l\'événement.']],
+                'cover'      => ['Image de couverture', 'image'],
+                'in_history' => ['Afficher dans la chronologie « Histoire »', 'checkbox', ['default' => 1]],
+                'in_events'  => ['Afficher dans l\'onglet « Événements »', 'checkbox', ['default' => 1]],
+                'featured'   => ['Jalon clé (frise de la page d\'accueil)', 'checkbox'],
+                'published'  => ['Publié', 'checkbox', ['default' => 1]],
+            ],
+        ],
+        'programs' => [
+            'table'    => 'programs',
+            'label'    => 'Programmes',
+            'singular' => 'un programme',
+            'icon'     => 'layers',
+            'intro'    => 'Les cartes « Nos programmes » de l\'accueil et de la page L\'association. Glissez-déposez pour changer l\'ordre.',
+            'order'    => 'sort_order, id',
+            'sortable' => true,
+            'columns'  => ['title' => 'Titre', 'tag' => 'Étiquette'],
+            'fields'   => [
+                'title'       => ['Titre', 'text', ['required' => true]],
+                'tag'         => ['Étiquette', 'text', ['placeholder' => 'Formation, Mémoire…', 'col' => 'half']],
+                'link_label'  => ['Texte du lien', 'text', ['default' => 'En savoir plus', 'col' => 'half']],
+                'description' => ['Description', 'textarea', ['required' => true]],
+                'link_url'    => ['Lien', 'text', ['help' => 'Page du site (ex. « histoire ») ou adresse complète https://…']],
+                'image'       => ['Photo', 'image', ['help' => 'Laisser vide pour afficher « Photo à venir ».']],
+                'published'   => ['Publié', 'checkbox', ['default' => 1]],
+            ],
+        ],
+        'stats' => [
+            'table'    => 'stats',
+            'label'    => 'Chiffres clés',
+            'singular' => 'un chiffre',
+            'icon'     => 'hash',
+            'intro'    => 'Les chiffres animés du hero, du bandeau « Bienvenue » et de la bande « Ce que le Cénacle laisse ». Un nombre suivi de « + » est accepté (ex. 10+).',
+            'order'    => 'grp, sort_order, id',
+            'sortable' => true,
+            'group_by' => 'grp',
+            'columns'  => ['value' => 'Valeur', 'label' => 'Libellé', 'grp' => 'Emplacement'],
+            'filters'  => ['grp' => STAT_GROUPS],
+            'fields'   => [
+                'grp'       => ['Emplacement', 'select', ['options' => STAT_GROUPS, 'required' => true]],
+                'value'     => ['Valeur', 'text', ['required' => true, 'placeholder' => '10+', 'col' => 'half']],
+                'label'     => ['Libellé', 'text', ['required' => true, 'col' => 'half']],
+                'detail'    => ['Précision', 'textarea', ['help' => 'Facultatif (affiché sous le libellé dans le hero et la bande sombre).']],
+                'published' => ['Publié', 'checkbox', ['default' => 1]],
+            ],
+        ],
+        'publications' => [
+            'table'    => 'publications',
+            'label'    => 'Publications',
+            'singular' => 'un ouvrage',
+            'icon'     => 'book',
+            'intro'    => 'Catalogue « Nos publications ». Tant qu\'aucun ouvrage n\'est publié, le site affiche « Bientôt disponible ». Le bouton « Je veux ce livre » ouvre WhatsApp.',
+            'order'    => 'sort_order, id',
+            'sortable' => true,
+            'columns'  => ['title' => 'Titre', 'authors' => 'Auteur(s)', 'collection' => 'Collection'],
+            'search'   => ['title', 'authors', 'collection'],
+            'fields'   => [
+                'title'        => ['Titre', 'text', ['required' => true]],
+                'authors'      => ['Auteur(s)', 'text', ['required' => true, 'col' => 'half']],
+                'collection'   => ['Collection', 'text', ['col' => 'half']],
+                'publisher'    => ['Éditeur', 'text', ['default' => 'Éditions Continents', 'col' => 'half']],
+                'release_date' => ['Date de parution', 'date', ['col' => 'half']],
+                'summary'      => ['Résumé', 'textarea'],
+                'cover'        => ['Couverture', 'image', ['help' => 'Format portrait conseillé (2:3).']],
+                'published'    => ['Publié', 'checkbox', ['default' => 1]],
+            ],
+        ],
+        'figures' => [
+            'table'    => 'figures',
+            'label'    => 'Figures',
+            'singular' => 'une figure',
+            'icon'     => 'users',
+            'intro'    => 'Galerie illimitée des personnalités liées au Cénacle. Sans photo, les initiales sont affichées. Chaque nouvelle fiche doit être validée par le Président.',
+            'order'    => 'sort_order, id',
+            'sortable' => true,
+            'columns'  => ['name' => 'Nom', 'role' => 'Rôle'],
+            'fields'   => [
+                'name'      => ['Nom', 'text', ['required' => true, 'col' => 'half']],
+                'role'      => ['Rôle', 'text', ['required' => true, 'col' => 'half']],
+                'bio'       => ['Courte description', 'textarea', ['required' => true]],
+                'photo'     => ['Photo', 'image', ['help' => 'Facultatif. Seules les photos validées peuvent être publiées.']],
+                'published' => ['Publié', 'checkbox', ['default' => 1]],
+            ],
+        ],
+        'categories' => [
+            'table'    => 'member_categories',
+            'label'    => 'Catégories de membres',
+            'singular' => 'une catégorie',
+            'icon'     => 'grid',
+            'intro'    => 'Les fiches de la rubrique « Nous rejoindre ».',
+            'order'    => 'sort_order, id',
+            'sortable' => true,
+            'columns'  => ['title' => 'Catégorie', 'description' => 'Description'],
+            'fields'   => [
+                'title'       => ['Nom de la catégorie', 'text', ['required' => true]],
+                'description' => ['Description', 'textarea', ['required' => true]],
+                'note'        => ['Précision (encadré)', 'textarea'],
+                'published'   => ['Publié', 'checkbox', ['default' => 1]],
+            ],
+        ],
+        'links' => [
+            'table'    => 'links',
+            'label'    => 'Blogs & réseaux',
+            'singular' => 'un lien',
+            'icon'     => 'link',
+            'intro'    => 'Liens affichés dans « Nous suivre » et le pied de page. Le lien Facebook se règle dans Réglages › Contact.',
+            'order'    => 'sort_order, id',
+            'sortable' => true,
+            'columns'  => ['label' => 'Libellé', 'url' => 'Adresse', 'kind' => 'Type'],
+            'fields'   => [
+                'label'     => ['Libellé', 'text', ['required' => true, 'col' => 'half']],
+                'kind'      => ['Type', 'select', ['options' => LINK_KINDS, 'col' => 'half']],
+                'url'       => ['Adresse (URL)', 'url', ['required' => true]],
+                'published' => ['Publié', 'checkbox', ['default' => 1]],
+            ],
+        ],
+    ];
+}

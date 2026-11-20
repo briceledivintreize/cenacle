@@ -1,0 +1,17 @@
+# Données de production (jamais versionnées)
+/storage/*
+!/storage/.gitkeep
+!/storage/.htaccess
+/public/uploads/*
+!/public/uploads/.gitkeep
+!/public/uploads/.htaccess
+
+# Configuration propre au serveur
+/app/config.local.php
+
+# Divers
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log

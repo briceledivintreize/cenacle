@@ -1,0 +1,29 @@
+# ---------------------------------------------------------------------------
+# Le Cénacle — .htaccess racine
+# Utilisé quand le projet entier est déployé dans public_html (Hostinger, Git).
+# Toutes les requêtes sont servies depuis le dossier public/ ; le code (app/),
+# la base de données (storage/) et les fichiers techniques restent inaccessibles.
+# ---------------------------------------------------------------------------
+Options -Indexes
+DirectoryIndex index.php
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Forcer HTTPS (décommenter une fois le certificat SSL actif dans hPanel)
+  # RewriteCond %{HTTPS} !=on
+  # RewriteCond %{HTTP:X-Forwarded-Proto} !https
+  # RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
+  # Dossiers et fichiers internes : accès interdit
+  RewriteRule ^(app|storage|bin|docs|\.git)(/|$) - [F,L]
+  RewriteRule ^(README\.md|DEPLOIEMENT\.md|\.gitignore|\.gitattributes)$ - [F,L]
+
+  # Tout le reste est servi depuis public/
+  RewriteCond %{REQUEST_URI} !/public/
+  RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+<FilesMatch "\.(sqlite|sqlite-wal|sqlite-shm|db|log|md|ini|sh)$">
+  Require all denied
+</FilesMatch>
